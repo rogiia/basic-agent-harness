@@ -1,4 +1,3 @@
-import os
 import json
 from openai import OpenAI
 from tools import get_tool_registry, get_tool_schemas
@@ -16,8 +15,8 @@ TOOL_SCHEMAS = get_tool_schemas()
 
 def get_llm_client():
     return OpenAI(
-        # base_url="http://localhost:11434/v1",
-        api_key=os.environ.get("OPENAI_API_KEY")
+        base_url="http://localhost:11434/v1",
+        api_key=""
     )
 
 
@@ -67,10 +66,10 @@ def agent_loop(client):
         # Keep looping until the LLM stops calling tools and gives a final reply
         while True:
             response = client.chat.completions.create(
-                model="gpt-5.4-mini",  # "gemma4",
+                model="gemma4",
                 messages=messages,
                 tools=TOOL_SCHEMAS,
-                # temperature=0.7,
+                temperature=0.7,
             )
 
             message = response.choices[0].message
