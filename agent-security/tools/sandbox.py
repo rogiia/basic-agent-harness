@@ -14,13 +14,18 @@ In-memory planning tools (todo, scratchpad, ask_question) are **not**
 run in the container — their state would not survive between separate
 ``docker exec`` processes — so they stay in-process on the host.
 
-This module requires the Docker CLI on the host.  On first use the
-``agent-security-runner`` image is built automatically from the
-``Dockerfile`` next to this package.
+This module requires a Docker-compatible container CLI on the host:
+Docker, or Podman (which is auto-detected when ``docker info`` does not
+work — note that a shell ``alias docker=podman`` is **not** enough,
+because the agent invokes the binary directly via ``subprocess`` without
+a shell).  The runtime can also be forced with the ``$AGENT_DOCKER``
+environment variable.  On first use the ``agent-security-runner`` image
+is built automatically from the ``Dockerfile`` next to this package.
 """
 
 import json
 import os
+import shlex
 import subprocess
 import uuid
 from pathlib import Path
@@ -48,10 +53,48 @@ DEFAULT_IMAGE = "agent-security-runner"
 EXEC_TIMEOUT_S = 120
 
 
-def _docker_available() -> bool:
-    return subprocess.run(
-        ["docker", "info"], capture_output=True
-    ).returncode == 0
+def _runtime_works(cmd: list[str]) -> bool:
+    """Return True if the given runtime CLI can talk to its daemon."""
+    try:
+        return subprocess.run(
+            cmd + ["info"], capture_output=True
+        ).returncode == 0
+    except FileNotFoundError:
+        return False
+
+
+def _resolve_runtime() -> list[str]:
+    """Pick the container-runtime command to use.
+
+    Preference order:
+      1. ``$AGENT_DOCKER`` (explicit override, e.g. ``podman`` or
+         ``/usr/bin/podman``; may include arguments such as ``sudo podman``);
+      2. ``docker`` if ``docker info`` succeeds;
+      3. ``podman`` if ``podman info`` succeeds;
+      4. ``docker`` as a last resort, so the caller raises the standard,
+         informative error instead of failing obscurely.
+    """
+    override = os.environ.get("AGENT_DOCKER", "").strip()
+    candidates: list[list[str]] = []
+    if override:
+        candidates.append(shlex.split(override))
+    candidates.append(["docker"])
+    candidates.append(["podman"])
+
+    seen: set[tuple[str, ...]] = set()
+    for cmd in candidates:
+        key = tuple(cmd)
+        if key in seen:
+            continue
+        seen.add(key)
+        if _runtime_works(cmd):
+            return cmd
+    return ["docker"]
+
+
+# Resolved once at import; re-checked per instance in case the daemon
+# was stopped between import and sandbox creation.
+DOCKER_CMD = _resolve_runtime()
 
 
 class DockerSandbox:
@@ -67,10 +110,14 @@ class DockerSandbox:
         exec_timeout: float = EXEC_TIMEOUT_S,
         container_env: dict | None = None,
     ):
-        if not _docker_available():
+        self.runtime = DOCKER_CMD
+        if not _runtime_works(self.runtime):
             raise DockerSandboxError(
-                "Docker is not available on the host. Install Docker (or "
-                "Podman aliased as docker) and ensure the daemon is running."
+                "No container runtime is available on the host. Install "
+                "Docker or Podman and ensure its daemon/service is running, "
+                "or set $AGENT_DOCKER to the binary to use. (Note: a shell "
+                "alias such as `alias docker=podman` is not enough, because "
+                "the agent invokes the CLI directly without a shell.)"
             )
 
         self.project_root = Path(project_root).resolve()
@@ -97,7 +144,7 @@ class DockerSandbox:
 
     def _ensure_image(self) -> None:
         inspect = subprocess.run(
-            ["docker", "image", "inspect", self.image],
+            self.runtime + ["image", "inspect", self.image],
             capture_output=True,
         )
         if inspect.returncode == 0:
@@ -109,7 +156,7 @@ class DockerSandbox:
             )
         print(f"  [sandbox] building image '{self.image}' (one-time)...")
         build = subprocess.run(
-            ["docker", "build", "-t", self.image, str(self.build_context)],
+            self.runtime + ["build", "-t", self.image, str(self.build_context)],
         )
         if build.returncode != 0:
             raise DockerSandboxError(
@@ -124,7 +171,7 @@ class DockerSandbox:
         gid = os.getgid() if hasattr(os, "getgid") else 0
 
         cmd = [
-            "docker", "run", "-d",
+            *self.runtime, "run", "-d",
             "--name", self.container,
             "--network", self.network,
             "--user", f"{uid}:{gid}",
@@ -155,7 +202,7 @@ class DockerSandbox:
 
         # Sanity check: confirm the container is actually running.
         ps = subprocess.run(
-            ["docker", "inspect", "-f", "{{.State.Running}}", self.container],
+            self.runtime + ["inspect", "-f", "{{.State.Running}}", self.container],
             capture_output=True, text=True,
         )
         if ps.returncode != 0 or ps.stdout.strip() != "true":
@@ -175,7 +222,7 @@ class DockerSandbox:
         try:
             proc = subprocess.run(
                 [
-                    "docker", "exec", "-i",
+                    *self.runtime, "exec", "-i",
                     self.container,
                     "python", "/agent_tools/_dispatch.py", name,
                 ],
@@ -199,5 +246,5 @@ class DockerSandbox:
 
     def close(self) -> None:
         subprocess.run(
-            ["docker", "rm", "-f", self.container], capture_output=True
+            self.runtime + ["rm", "-f", self.container], capture_output=True
         )
