@@ -47,7 +47,7 @@ ACTION_TOOLS = {
 }
 
 DEFAULT_IMAGE = "agent-security-runner"
-# §4.3 Default per-tool-call timeout.  30 minutes was far too generous
+# Default per-tool-call timeout.  30 minutes was far too generous
 # and let a hanging command block the whole session.  Lowered to 120 s
 # with a --tool-timeout CLI override.
 EXEC_TIMEOUT_S = 120
@@ -127,11 +127,12 @@ class DockerSandbox:
             )
 
         self.tools_dir = Path(tools_dir).resolve()
-        self.build_context = Path(build_context or self.tools_dir.parent).resolve()
+        self.build_context = Path(
+            build_context or self.tools_dir.parent).resolve()
         self.image = image
         self.network = network
         self.exec_timeout = float(exec_timeout)
-        # §5.2: the harness — not the model — controls the container env.
+        # the harness — not the model — controls the container env.
         # Only an allowlist of vars is inherited from the host; secret-
         # looking env vars are stripped before the container ever starts.
         self.container_env = container_env or {}
@@ -152,11 +153,13 @@ class DockerSandbox:
         dockerfile = self.build_context / "Dockerfile"
         if not dockerfile.exists():
             raise DockerSandboxError(
-                f"Cannot build sandbox image: Dockerfile not found at {dockerfile}."
+                f"Cannot build sandbox image: Dockerfile not found at {
+                    dockerfile}."
             )
         print(f"  [sandbox] building image '{self.image}' (one-time)...")
         build = subprocess.run(
-            self.runtime + ["build", "-t", self.image, str(self.build_context)],
+            self.runtime + ["build", "-t",
+                            self.image, str(self.build_context)],
         )
         if build.returncode != 0:
             raise DockerSandboxError(
@@ -183,7 +186,7 @@ class DockerSandbox:
             "-w", str(self.project_root),
         ]
 
-        # §5.2 Credential injection at the harness level: only the
+        # Credential injection at the harness level: only the
         # allowlisted env vars (set by the harness, never by the model)
         # are passed to the container.  Host credentials are stripped.
         for name, value in self.container_env.items():
@@ -197,17 +200,20 @@ class DockerSandbox:
         run = subprocess.run(cmd, capture_output=True, text=True)
         if run.returncode != 0:
             raise DockerSandboxError(
-                f"Could not start sandbox container: {run.stderr.strip() or run.stdout.strip()}"
+                f"Could not start sandbox container: {
+                    run.stderr.strip() or run.stdout.strip()}"
             )
 
         # Sanity check: confirm the container is actually running.
         ps = subprocess.run(
-            self.runtime + ["inspect", "-f", "{{.State.Running}}", self.container],
+            self.runtime + ["inspect", "-f",
+                            "{{.State.Running}}", self.container],
             capture_output=True, text=True,
         )
         if ps.returncode != 0 or ps.stdout.strip() != "true":
             raise DockerSandboxError(
-                f"Sandbox container '{self.container}' is not running after start."
+                f"Sandbox container '{
+                    self.container}' is not running after start."
             )
 
     # -- tool execution ------------------------------------------------
@@ -240,7 +246,8 @@ class DockerSandbox:
         if proc.returncode != 0:
             err = (proc.stderr or proc.stdout or "").strip()
             raise DockerSandboxError(
-                f"Container exec for '{name}' failed (exit {proc.returncode}): {err}"
+                f"Container exec for '{name}' failed (exit {proc.returncode}): {
+                    err}"
             )
         return proc.stdout
 
