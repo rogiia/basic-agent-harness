@@ -62,7 +62,7 @@ def _ask_permission(tool_name: str, args: dict) -> bool:
         try:
             answer = input("  Allow this action? [y/n]: ").strip().lower()
         except EOFError:
-            print("  (EOF — denying permission)")
+            print("  (EOF, denying permission)")
             return False
         if answer in ("y", "yes"):
             return True
@@ -107,7 +107,7 @@ def check_permission(
     if mode == PermissionMode.ACCEPT_EDITS and tool_name in WRITE_TOOLS:
         path = _resolve_tool_path(tool_name, args)
         if path and _is_within_working_dir(path, working_dir):
-            return True  # auto-approved — within the working directory
+            return True  # auto-approved, within the working directory
         # Path is outside the working directory → fall through to ask
 
     # Default mode, or acceptEdits for non-write / out-of-tree tools
@@ -186,7 +186,7 @@ def agent_loop(client, mode: PermissionMode, working_dir: Path):
                 "- Clarification (ask_question): ask the user a single focused question when you "
                 "are genuinely blocked and cannot reasonably infer the missing information from "
                 "context. Do not use it for progress updates or to confirm actions you can already "
-                "take — only ask when it is strictly necessary to proceed.\n\n"
+                "take, only ask when it is strictly necessary to proceed.\n\n"
 
                 "## Working directory\n\n"
                 "The current working directory is always the user's project root. "
@@ -202,22 +202,22 @@ def agent_loop(client, mode: PermissionMode, working_dir: Path):
                 "todo_append (status: pending).\n"
                 "3. Before starting a step, mark it in_progress with todo_update. "
                 "Keep only one item in_progress at a time.\n"
-                "4. Mark items done immediately after completing them — do not batch completions.\n"
+                "4. Mark items done immediately after completing them, do not batch completions.\n"
                 "5. Call todo_list to review remaining work before moving to the next step.\n"
                 "6. Mark tasks cancelled if they become unnecessary.\n\n"
                 "For simple, single-step tasks: act directly without creating todos.\n\n"
                 "Planning tool calls (write_scratchpad, todo_append, todo_update, todo_list) "
                 "are internal bookkeeping, not responses to the user. After any planning tool "
-                "call, always continue working immediately — make your next tool call or, once "
+                "call, always continue working immediately, make your next tool call or, once "
                 "the task is fully complete, give a substantive final answer. "
                 "Never emit an empty or whitespace-only message.\n\n"
                 "## Replanning\n\n"
                 "After every tool result, check whether the outcome matched your expectation. "
                 "If a tool returns an error, unexpected output, or reveals information that "
-                "changes your understanding of the task, do not move to the next planned step — "
+                "changes your understanding of the task, do not move to the next planned step, "
                 "replan first.\n\n"
                 "When a step fails:\n"
-                "1. Diagnose in the scratchpad — is this a recoverable input error (wrong path, "
+                "1. Diagnose in the scratchpad: is this a recoverable input error (wrong path, "
                 "typo, wrong argument) or a deeper problem (wrong approach, wrong assumption)?\n"
                 "2. Mark the task failed: todo_update(id, status='failed').\n"
                 "3. Choose a recovery action:\n"
@@ -227,8 +227,8 @@ def agent_loop(client, mode: PermissionMode, working_dir: Path):
                 "   - Reorder: new information makes a different task more urgent. Update the "
                 "pending items before continuing.\n"
                 "4. If todo_update reports that the retry limit has been reached, stop retrying. "
-                "Write a clear diagnosis in the scratchpad — what you tried, what failed each "
-                "time, and what you need — then give the user a concise escalation message "
+                "Write a clear diagnosis in the scratchpad: what you tried, what failed each "
+                "time, and what you need, then give the user a concise escalation message "
                 "and wait for their input.\n\n"
                 "When a tool succeeds but returns information that changes the picture, pause "
                 "before acting. Call todo_list, reassess all pending items in the scratchpad, "
@@ -236,34 +236,34 @@ def agent_loop(client, mode: PermissionMode, working_dir: Path):
                 "## How to use the scratchpad\n\n"
                 "Before each tool call during a complex task, update the scratchpad with your "
                 "current thinking. Structure each entry around these five steps:\n\n"
-                "1. Restate the goal — write what you understand the task to be, in your own words. "
+                "1. Restate the goal: write what you understand the task to be, in your own words. "
                 "This catches misreads before they compound into wasted work.\n"
-                "2. Survey what you know — note which files you have seen, what the code structure "
+                "2. Survey what you know: note which files you have seen, what the code structure "
                 "looks like, and what constraints or requirements apply.\n"
-                "3. Evaluate options — reason through at least two approaches and explain why you "
+                "3. Evaluate options: reason through at least two approaches and explain why you "
                 "are choosing one over the other (e.g. 'I could rewrite the middleware, or wrap it. "
                 "Wrapping is safer because it leaves the existing call sites untouched.').\n"
-                "4. Anticipate failure modes — write down what could go wrong with the chosen "
+                "4. Anticipate failure modes: write down what could go wrong with the chosen "
                 "approach and how you would diagnose it (e.g. 'If the tests fail after this, the "
                 "most likely cause is that the session cookie name changed.').\n"
-                "5. Decide the next single action — commit to exactly one tool call. "
+                "5. Decide the next single action: commit to exactly one tool call. "
                 "Do not plan several calls at once; decide the next step only.\n\n"
                 "Re-read the scratchpad whenever you resume after a tool result to keep your "
                 "reasoning grounded in what you have already learned.\n\n"
                 "## Done detection\n\n"
                 "Do not give a final answer based on the task list being empty alone. "
                 "Before declaring the task complete, verify all three of the following:\n\n"
-                "1. Structural completion — call todo_list and confirm there are no pending, "
+                "1. Structural completion: call todo_list and confirm there are no pending, "
                 "in_progress, or failed items.\n"
-                "2. Verification — check the output against the original goal. For code tasks: "
+                "2. Verification: check the output against the original goal. For code tasks: "
                 "run the tests or build with run_bash and confirm they pass. For research tasks: "
                 "re-read the scratchpad and confirm the assembled answer addresses what was "
                 "actually asked.\n"
-                "3. Uncertainty check — read the scratchpad and ask: are there unresolved "
+                "3. Uncertainty check: read the scratchpad and ask: are there unresolved "
                 "questions, assumptions that were never validated, or tasks that were cancelled "
                 "rather than properly completed?\n\n"
                 "If all three are satisfied, give your final answer. If any are not, re-enter "
-                "the planning loop — add the outstanding items to the todo list and continue."
+                "the planning loop, add the outstanding items to the todo list and continue."
             ),
         }
     ]
@@ -290,10 +290,10 @@ def agent_loop(client, mode: PermissionMode, working_dir: Path):
             messages.append(message)
 
             if message.tool_calls:
-                # The LLM wants to use one or more tools — run them, then loop
+                # The LLM wants to use one or more tools, run them, then loop
                 handle_tool_calls(message.tool_calls, messages, mode, working_dir)
             elif not message.content or not message.content.strip():
-                # The model ended its turn with an empty message — most commonly
+                # The model ended its turn with an empty message, most commonly
                 # happens after a planning-only tool call (scratchpad / todo).
                 # Nudge it to continue rather than silently stalling.
                 messages.append({

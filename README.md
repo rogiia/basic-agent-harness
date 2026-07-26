@@ -4,16 +4,16 @@ Companion code for the [ruxu.dev](https://www.ruxu.dev) blog post series on buil
 
 ## Blog Post Series
 
-1. [Build a Basic AI Agent](https://www.ruxu.dev/articles/ai/build-a-basic-ai-agent/) — A minimal conversational agent with a message loop, powered by a local model via Ollama.
-2. [Build an AI Agent with Tools](https://www.ruxu.dev/articles/ai/build-an-ai-agent-with-tools/) — Extends the agent with a tool registry so the LLM can read/write files, search the filesystem, run shell commands, and fetch web pages.
+1. [Build a Basic AI Agent](https://www.ruxu.dev/articles/ai/build-a-basic-ai-agent/): A minimal conversational agent with a message loop, powered by a local model via Ollama.
+2. [Build an AI Agent with Tools](https://www.ruxu.dev/articles/ai/build-an-ai-agent-with-tools/): Extends the agent with a tool registry so the LLM can read/write files, search the filesystem, run shell commands, and fetch web pages.
 
 ## Structure
 
 ```
-simple-agent/          # Part 1 — bare-bones agent loop
+simple-agent/          # Part 1: bare-bones agent loop
   agent.py
 
-agent-with-tools/      # Part 2 — agent with tool-calling support
+agent-with-tools/      # Part 2: agent with tool-calling support
   agent.py
   tools/
     filesystem.py      # read, write, search files

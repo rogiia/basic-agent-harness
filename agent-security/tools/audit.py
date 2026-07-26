@@ -5,13 +5,13 @@ ISO timestamp and session id.  The log is flushed after every record so
 that a crash still leaves a complete trail.  The file alone is enough
 to reconstruct what the agent did, in order.
 
-§2.4: tool results are truncated to ``MAX_RESULT_BYTES`` in the log to
+tool results are truncated to ``MAX_RESULT_BYTES`` in the log to
 prevent unbounded growth; a SHA-256 and full length are stored alongside
 so the truncated entry is self-describing and tamper-evident.
 
-§6.1: dedicated events for every decision step —
+dedicated events for every decision step,
 ``log_permission_decision``, ``log_llm_request``, ``log_llm_response``,
-``log_session_abort`` — give full forensic replay without guessing.
+``log_session_abort``, give full forensic replay without guessing.
 """
 
 import hashlib
@@ -66,7 +66,8 @@ class AuditLog:
             "event": event,
         }
         record.update(fields)
-        self._fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+        self._fh.write(json.dumps(
+            record, ensure_ascii=False, default=str) + "\n")
         self._fh.flush()
 
     # -- convenience wrappers ------------------------------------------
@@ -86,7 +87,8 @@ class AuditLog:
                     args = json.loads(tc.function.arguments)
                 except Exception:
                     args = tc.function.arguments
-                calls.append({"id": tc.id, "name": tc.function.name, "args": args})
+                calls.append(
+                    {"id": tc.id, "name": tc.function.name, "args": args})
         self.log("assistant_message", content=content, tool_calls=calls)
 
     def log_tool_result(
@@ -116,8 +118,6 @@ class AuditLog:
             **_truncate_for_log(result),
         )
 
-    # -- §6.1 decision-step logging ----------------------------------
-
     def log_permission_decision(
         self,
         tool: str,
@@ -126,7 +126,7 @@ class AuditLog:
         allowed: bool,
         reason: str | None = None,
     ) -> None:
-        """Record a standalone permission decision (§6.1).
+        """Record a standalone permission decision.
 
         This is emitted *before* the tool runs (or is refused), so the
         audit trail shows the decision and its reason even if the
@@ -148,7 +148,7 @@ class AuditLog:
         token_estimate: int,
         has_tools: bool,
     ) -> None:
-        """Record that an LLM request is about to be sent (§6.1)."""
+        """Record that an LLM request is about to be sent."""
         self.log(
             "llm_request",
             model=model,
@@ -165,7 +165,7 @@ class AuditLog:
         message_hash: str | None = None,
         tool_call_count: int = 0,
     ) -> None:
-        """Record the LLM response metadata (§6.1).
+        """Record the LLM response metadata.
 
         ``message_hash`` is a SHA-256 of the assistant message content
         so the full conversation can be verified for forensic replay
@@ -181,7 +181,7 @@ class AuditLog:
         )
 
     def log_session_abort(self, reason: str) -> None:
-        """Record that the session was aborted (§6.3)."""
+        """Record that the session was aborted."""
         self.log("session_abort", reason=reason)
 
     def close(self) -> None:

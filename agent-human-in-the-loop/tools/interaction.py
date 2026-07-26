@@ -4,5 +4,5 @@ def ask_question(question: str) -> str:
     try:
         answer = input("  Your answer: ").strip()
     except EOFError:
-        return "(no answer — EOF)"
+        return "(no answer, EOF)"
     return answer if answer else "(no answer provided)"

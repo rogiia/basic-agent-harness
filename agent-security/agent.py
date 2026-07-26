@@ -95,7 +95,7 @@ def _ask_permission(tool_name: str, args: dict) -> bool:
         try:
             answer = input("  Allow this action? [y/n]: ").strip().lower()
         except EOFError:
-            print("  (EOF — denying permission)")
+            print("  (EOF, denying permission)")
             return False
         if answer in ("y", "yes"):
             return True
@@ -118,9 +118,9 @@ def check_permission(
 
     Three layers, evaluated in order:
 
-      1. Tool policy (§2.2 / §2.3) — a hard gate that no mode can
+      1. Tool policy: a hard gate that no mode can
          override: path scoping, shell denylist, SSRF guard.
-      2. Always-confirm patterns (§2.2) — destructive calls require
+      2. Always-confirm patterns: destructive calls require
          explicit confirmation even in acceptEdits, and selected
          irreversible patterns refuse even in dangerouslySkipPermissions.
       3. Mode-based decision (default / acceptEdits / skip).
@@ -138,7 +138,7 @@ def check_permission(
         All other tools require explicit user approval.
 
     dangerouslySkipPermissions
-        All tools run without any prompt — EXCEPT calls blocked by layer
+        All tools run without any prompt, EXCEPT calls blocked by layer
         1 (hard policy) or layer 2 (always-confirm / irreversible).
     """
     # Layer 1: hard policy gate (path scope, shell, SSRF).
@@ -171,11 +171,11 @@ def check_permission(
     if mode == PermissionMode.ACCEPT_EDITS and tool_name in WRITE_TOOLS:
         path = _resolve_tool_path(tool_name, args)
         if path and _is_within_working_dir(path, working_dir):
-            # an edit that empties an existing file is a delete —
+            # an edit that empties an existing file is a delete,
             # require confirmation rather than auto-approving.
             if _is_delete_via_write(tool_name, args, path):
                 return _ask_permission(f"{tool_name}  [DELETE-via-empty]", args), None
-            return True, None  # auto-approved — within the working directory
+            return True, None  # auto-approved, within the working directory
         # Path is outside the working directory → fall through to ask
 
     # Default mode, or acceptEdits for non-write / out-of-tree tools
@@ -212,8 +212,8 @@ def build_tool_registry(
     Action tools (filesystem, shell, web) are dispatched into the
     long-lived Docker sandbox container.
 
-    If *allowed_tools* is given, only tools in that set are exposed —
-    this is the principle of least privilege (checklist §2.1).  ``None``
+    If *allowed_tools* is given, only tools in that set are exposed,
+    this is the principle of least privilege.  ``None``
     means "expose everything".
     """
     registry = {}
@@ -271,13 +271,13 @@ def handle_tool_calls(
     Every call passes through these layers, in order, and each decision
     is recorded in the audit log:
 
-      0. Abort check (§6.3) + iteration cap (§4.1).
-      1. Schema validation (§3.1/§3.3).
-      2. Permission gate (§2.2/§2.3) — may prompt the user.
+      0. Abort check + iteration cap.
+      1. Schema validation.
+      2. Permission gate, may prompt the user.
       3. Execution: action tools run inside the Docker sandbox container;
          planning tools run in-process on the host.  A container failure
          or timeout is reported back to the LLM as an error.
-      4. File rollback snapshot (§6.3) before write/edit.
+      4. File rollback snapshot before write/edit.
     """
     caps = iteration_caps or IterationCaps()
     abort = abort_controller or AbortController()
@@ -297,7 +297,7 @@ def handle_tool_calls(
             })
             return
 
-        # §4.1 session-level tool-call cap.
+        # session-level tool-call cap.
         cap_reason = caps.bump_tool_call()
         if cap_reason is not None:
             audit.log("iteration_cap_hit", scope="session",
@@ -349,7 +349,7 @@ def handle_tool_calls(
         # Schema-validate tool inputs: parse and validate before
         # any policy/permission check.  A malformed call is reported
         # back to the LLM with the specific errors so it can correct
-        # and retry — it never reaches the sandbox or the permission
+        # and retry, it never reaches the sandbox or the permission
         # gate.
         try:
             args = json.loads(tool_call.function.arguments)
@@ -460,7 +460,7 @@ def handle_tool_calls(
                     name, args, mode, working_dir,
                 )
 
-            # §6.1 log the permission decision as a standalone event.
+            # log the permission decision as a standalone event.
             audit.log_permission_decision(
                 tool=name,
                 args=args,
@@ -479,7 +479,7 @@ def handle_tool_calls(
                 # File rollback: snapshot the original file before
                 # any write/edit so the session can offer to revert on
                 # abort.  Only files inside the working dir are
-                # snapshotted (writes outside are already blocked by §2.3).
+                # snapshotted (writes outside are already blocked by).
                 if name in ("write_file", "edit_file"):
                     target_path = args.get("path", "")
                     if target_path:
@@ -495,7 +495,7 @@ def handle_tool_calls(
                         "not execute this tool. Do not retry without changing "
                         "the approach or asking the user."
                     )
-                    # §4.3 distinguish timeouts from other container errors
+                    # distinguish timeouts from other container errors
                     # for the audit log.
                     if "timed out" in str(e).lower():
                         audit.log("tool_timeout", tool=name,
@@ -563,7 +563,7 @@ def agent_loop(
     container_name: str | None = None,
     approve_plan: bool = False,
 ):
-    # resource controls: the harness — never the model — owns these.
+    # resource controls: the harness, never the model, owns these.
     iteration_caps = iteration_caps or IterationCaps()
     context_budget = context_budget or ContextBudget()
     cost_tracker = cost_tracker or CostTracker()
@@ -603,18 +603,18 @@ def agent_loop(
         "- Clarification (ask_question): ask the user a single focused question when you "
         "are genuinely blocked and cannot reasonably infer the missing information from "
         "context. Do not use it for progress updates or to confirm actions you can already "
-        "take — only ask when it is strictly necessary to proceed.\n\n"
+        "take, only ask when it is strictly necessary to proceed.\n\n"
 
         "## Execution environment (Docker sandbox)\n\n"
-        "Action tools — read_file, write_file, edit_file, glob_files, grep, run_bash, "
-        "webfetch — execute inside a Docker container. The user's project directory is "
+        "Action tools: read_file, write_file, edit_file, glob_files, grep, run_bash, "
+        "webfetch, execute inside a Docker container. The user's project directory is "
         "bind-mounted into that container at the same path as on the host, and the "
         "container's working directory is the project root. You can only see and modify "
         "files inside the project mount; the rest of the container's filesystem is a "
         "minimal, read-only-by-convention Linux image. If the session was started with "
-        "network disabled, run_bash and webfetch that need network will fail — treat that "
+        "network disabled, run_bash and webfetch that need network will fail, treat that "
         "as expected, not as a bug to work around. If a tool returns 'Container error: "
-        "...', do not retry the same call — adjust the approach or ask the user to run it "
+        "...', do not retry the same call, adjust the approach or ask the user to run it "
         "manually. Planning tools run on the host, not in the container, so their state "
         "persists across calls.\n\n"
 
@@ -632,7 +632,7 @@ def agent_loop(
         "todo_append (status: pending).\n"
         "3. Before starting a step, mark it in_progress with todo_update. "
         "Keep only one item in_progress at a time.\n"
-        "4. Mark items done immediately after completing them — do not batch completions.\n"
+        "4. Mark items done immediately after completing them, do not batch completions.\n"
         "5. Call todo_list to review remaining work before moving to the next step.\n"
         "6. Mark tasks cancelled if they become unnecessary.\n\n"
 
@@ -640,16 +640,16 @@ def agent_loop(
 
         "Planning tool calls (write_scratchpad, todo_append, todo_update, todo_list) "
         "are internal bookkeeping, not responses to the user. After any planning tool "
-        "call, always continue working immediately — make your next tool call or, once "
+        "call, always continue working immediately, make your next tool call or, once "
         "the task is fully complete, give a substantive final answer. "
         "Never emit an empty or whitespace-only message.\n\n"
         "## Replanning\n\n"
         "After every tool result, check whether the outcome matched your expectation. "
         "If a tool returns an error, unexpected output, or reveals information that "
-        "changes your understanding of the task, do not move to the next planned step — "
+        "changes your understanding of the task, do not move to the next planned step, "
         "replan first.\n\n"
         "When a step fails:\n"
-        "1. Diagnose in the scratchpad — is this a recoverable input error (wrong path, "
+        "1. Diagnose in the scratchpad: is this a recoverable input error (wrong path, "
         "typo, wrong argument) or a deeper problem (wrong approach, wrong assumption)?\n"
         "2. Mark the task failed: todo_update(id, status='failed').\n"
         "3. Choose a recovery action:\n"
@@ -659,8 +659,8 @@ def agent_loop(
         "   - Reorder: new information makes a different task more urgent. Update the "
         "pending items before continuing.\n"
         "4. If todo_update reports that the retry limit has been reached, stop retrying. "
-        "Write a clear diagnosis in the scratchpad — what you tried, what failed each "
-        "time, and what you need — then give the user a concise escalation message "
+        "Write a clear diagnosis in the scratchpad: what you tried, what failed each "
+        "time, and what you need, then give the user a concise escalation message "
         "and wait for their input.\n\n"
         "When a tool succeeds but returns information that changes the picture, pause "
         "before acting. Call todo_list, reassess all pending items in the scratchpad, "
@@ -668,34 +668,34 @@ def agent_loop(
         "## How to use the scratchpad\n\n"
         "Before each tool call during a complex task, update the scratchpad with your "
         "current thinking. Structure each entry around these five steps:\n\n"
-        "1. Restate the goal — write what you understand the task to be, in your own words. "
+        "1. Restate the goal: write what you understand the task to be, in your own words. "
         "This catches misreads before they compound into wasted work.\n"
-        "2. Survey what you know — note which files you have seen, what the code structure "
+        "2. Survey what you know: note which files you have seen, what the code structure "
         "looks like, and what constraints or requirements apply.\n"
-        "3. Evaluate options — reason through at least two approaches and explain why you "
+        "3. Evaluate options: reason through at least two approaches and explain why you "
         "are choosing one over the other (e.g. 'I could rewrite the middleware, or wrap it. "
         "Wrapping is safer because it leaves the existing call sites untouched.').\n"
-        "4. Anticipate failure modes — write down what could go wrong with the chosen "
+        "4. Anticipate failure modes: write down what could go wrong with the chosen "
         "approach and how you would diagnose it (e.g. 'If the tests fail after this, the "
         "most likely cause is that the session cookie name changed.').\n"
-        "5. Decide the next single action — commit to exactly one tool call. "
+        "5. Decide the next single action: commit to exactly one tool call. "
         "Do not plan several calls at once; decide the next step only.\n\n"
         "Re-read the scratchpad whenever you resume after a tool result to keep your "
         "reasoning grounded in what you have already learned.\n\n"
         "## Done detection\n\n"
         "Do not give a final answer based on the task list being empty alone. "
         "Before declaring the task complete, verify all three of the following:\n\n"
-        "1. Structural completion — call todo_list and confirm there are no pending, "
+        "1. Structural completion: call todo_list and confirm there are no pending, "
         "in_progress, or failed items.\n"
-        "2. Verification — check the output against the original goal. For code tasks: "
+        "2. Verification: check the output against the original goal. For code tasks: "
         "run the tests or build with run_bash and confirm they pass. For research tasks: "
         "re-read the scratchpad and confirm the assembled answer addresses what was "
         "actually asked.\n"
-        "3. Uncertainty check — read the scratchpad and ask: are there unresolved "
+        "3. Uncertainty check: read the scratchpad and ask: are there unresolved "
         "questions, assumptions that were never validated, or tasks that were cancelled "
         "rather than properly completed?\n\n"
         "If all three are satisfied, give your final answer. If any are not, re-enter "
-        "the planning loop — add the outstanding items to the todo list and continue."
+        "the planning loop, add the outstanding items to the todo list and continue."
     )
     _prompt_warnings = secret_management.audit_system_prompt(
         _system_prompt_body)
@@ -795,7 +795,7 @@ def agent_loop(
                     messages=messages,
                     tools=active_schemas,
                     temperature=0.7,
-                    timeout=llm_timeout,   # §4.3 LLM call timeout
+                    timeout=llm_timeout,
                 )
             except Exception as e:
                 #  surface an LLM-call failure (including timeout)
@@ -807,7 +807,7 @@ def agent_loop(
                 break
 
             # record usage for cost tracking.  Local backends
-            # (Ollama) may not populate usage; that's fine — the
+            # (Ollama) may not populate usage; that's fine, the
             # tracker simply records zero tokens for the call.
             cost_tracker.record_usage(getattr(response, "usage", None))
 
@@ -845,7 +845,7 @@ def agent_loop(
             audit.log_assistant_message(message.content, message.tool_calls)
 
             if message.tool_calls:
-                # The LLM wants to use one or more tools — run them, then loop
+                # The LLM wants to use one or more tools, run them, then loop
                 handle_tool_calls(
                     message.tool_calls,
                     messages,
@@ -862,7 +862,7 @@ def agent_loop(
                     plan_state=plan_state,
                 )
             elif not message.content or not message.content.strip():
-                # The model ended its turn with an empty message — most commonly
+                # The model ended its turn with an empty message, most commonly
                 # happens after a planning-only tool call (scratchpad / todo).
                 # Nudge it to continue rather than silently stalling.
                 messages.append({
@@ -876,7 +876,7 @@ def agent_loop(
                 # needed here.  If a web UI is added in the future, the
                 # assistant content MUST be passed through html.escape
                 # (or a template engine's auto-escaping) before being
-                # inserted into the DOM — never trust model output.
+                # inserted into the DOM, never trust model output.
                 print(f"Assistant: {message.content}")
                 break
 
@@ -930,7 +930,7 @@ if __name__ == "__main__":
         default=None,
         help=(
             "Comma-separated allowlist of tool names to expose to the agent "
-            "(principle of least privilege, checklist §2.1).  "
+            "(principle of least privilege).  "
             "Example: --tools read_file,glob_files,grep,run_bash.  "
             "Default: all tools are exposed."
         ),
@@ -940,7 +940,7 @@ if __name__ == "__main__":
         type=float,
         default=120.0,
         help=(
-            "§4.3 Per-tool-call timeout in seconds.  A tool that does not "
+            "Per-tool-call timeout in seconds.  A tool that does not "
             "finish in this time is killed and reported to the LLM as a "
             "timeout.  Default: 120."
         ),
@@ -950,7 +950,7 @@ if __name__ == "__main__":
         type=float,
         default=120.0,
         help=(
-            "§4.3 Timeout for each LLM completion call in seconds. "
+            "Timeout for each LLM completion call in seconds. "
             "Default: 120."
         ),
     )
@@ -959,7 +959,7 @@ if __name__ == "__main__":
         type=int,
         default=None,
         help=(
-            "§4.1 Max LLM turns per user message before the loop stops "
+            "Max LLM turns per user message before the loop stops "
             f"and asks for a summary.  Default: {
                 resource_limits.DEFAULT_MAX_TURNS_PER_USER_MSG}."
         ),
@@ -969,7 +969,7 @@ if __name__ == "__main__":
         type=int,
         default=None,
         help=(
-            "§4.1 Max tool calls for the whole session.  Default: "
+            "Max tool calls for the whole session.  Default: "
             f"{resource_limits.DEFAULT_MAX_TOOL_CALLS_PER_SESSION}."
         ),
     )
@@ -978,7 +978,7 @@ if __name__ == "__main__":
         type=int,
         default=None,
         help=(
-            "§4.2 Token budget for the message history.  When exceeded, "
+            "Token budget for the message history.  When exceeded, "
             "older messages are trimmed and replaced with a summary. "
             f"Default: {resource_limits.DEFAULT_MAX_CONTEXT_TOKENS}."
         ),
@@ -988,7 +988,7 @@ if __name__ == "__main__":
         type=float,
         default=None,
         help=(
-            "§4.4 Cumulative API spend cap in USD.  When exceeded, the "
+            "Cumulative API spend cap in USD.  When exceeded, the "
             "session aborts gracefully.  Default: "
             f"{resource_limits.DEFAULT_MAX_COST_USD:.2f}  (no effect for "
             "local backends that don't report usage)."
@@ -999,7 +999,7 @@ if __name__ == "__main__":
         action="store_true",
         default=False,
         help=(
-            "§6.2 Require human approval of the agent's plan before any "
+            "Require human approval of the agent's plan before any "
             "action tool runs.  The agent builds its plan in the "
             "scratchpad + todo list; the first time it tries to run an "
             "action tool, the user is shown the plan and asked to approve."
@@ -1038,7 +1038,7 @@ if __name__ == "__main__":
         print("  These will NOT be passed to the sandbox container "
               "(only an allowlist is inherited).")
 
-    # 5.2 Verify no credential mount paths would leak into the container.
+    # Verify no credential mount paths would leak into the container.
     cred_mounts = secret_management.check_credential_mounts()
     if cred_mounts:
         print(
@@ -1057,8 +1057,8 @@ if __name__ == "__main__":
             project_root=sandbox_root,
             tools_dir=tools_dir,
             network=cli_args.network,
-            exec_timeout=cli_args.tool_timeout,   # §4.3
-            container_env=container_env,          # §5.2 / §5.3
+            exec_timeout=cli_args.tool_timeout,
+            container_env=container_env,
         )
     except DockerSandboxError as e:
         print(f"Could not start sandbox: {e}")
@@ -1096,10 +1096,10 @@ if __name__ == "__main__":
         max_tool_calls_per_session=iteration_caps.max_tool_calls_per_session,
         max_context_tokens=context_budget.max_tokens,
         max_cost_usd=cost_tracker.max_cost_usd,
-        session_id=session_creds.session_id,                   # §5.3
-        secret_env_count=len(secret_env),                       # §5.1
-        credential_mounts_found=[str(p) for p in cred_mounts],  # §5.2
-        container_env_allowlist=sorted(container_env.keys()),  # §5.2
+        session_id=session_creds.session_id,
+        secret_env_count=len(secret_env),
+        credential_mounts_found=[str(p) for p in cred_mounts],
+        container_env_allowlist=sorted(container_env.keys()),
     )
 
     print(f"Agent started in '{
@@ -1117,10 +1117,10 @@ if __name__ == "__main__":
     print(f"Audit log:         {audit.path}")
     print("Type \\exit to quit.  (Ctrl-C to abort a session)\n")
 
-    # session abort controller — installs SIGINT/SIGTERM handlers.
+    # session abort controller: installs SIGINT/SIGTERM handlers.
     abort_controller = AbortController()
     abort_controller.install_signal_handlers()
-    # file rollback — snapshots before write/edit for revert on abort.
+    # file rollback: snapshots before write/edit for revert on abort.
     file_rollback = FileRollback()
 
     client = get_llm_client()
@@ -1144,7 +1144,7 @@ if __name__ == "__main__":
         if file_rollback.snapshot_count > 0:
             file_rollback.offer_rollback()
         file_rollback.cleanup()
-        session_creds.revoke()   # §5.3 rotate on exit
+        session_creds.revoke()
         sandbox.close()
         audit.close()
         print(f"\nSandbox container removed. Audit log written to {

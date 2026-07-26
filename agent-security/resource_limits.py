@@ -1,14 +1,14 @@
-"""Loop & resource controls (checklist §4).
+"""Loop & resource controls.
 
 This module centralises every limit that prevents the agent from
 running away with itself:
 
-  §4.1  IterationCaps      — hard caps on turns and tool calls.
-  §4.2  ContextBudget      — token budget with automatic context trimming.
-  §4.3  (timeouts live in sandbox.py / agent.py — wired here via a small
+  IterationCaps: hard caps on turns and tool calls.
+  ContextBudget: token budget with automatic context trimming.
+  (timeouts live in sandbox.py / agent.py, wired here via a small
          ToolTimeout helper that classifies timeout events for the audit
          log).
-  §4.4  CostTracker        — cumulative API spend circuit breaker.
+  CostTracker: cumulative API spend circuit breaker.
 
 All of these are *host-side* controls: the model never gets to vote on
 them.  They are evaluated between tool calls and before each LLM call.
@@ -22,7 +22,7 @@ from typing import Any
 
 
 # ---------------------------------------------------------------------------
-# 4.1 Hard iteration caps
+# Hard iteration caps
 # ---------------------------------------------------------------------------
 
 # Defaults are chosen to be generous enough for real coding tasks but
@@ -33,9 +33,9 @@ DEFAULT_MAX_TOOL_CALLS_PER_SESSION = 200
 
 @dataclass
 class IterationCaps:
-    """Counters that enforce hard iteration caps (§4.1).
+    """Counters that enforce hard iteration caps.
 
-    The harness — never the model — owns these limits.  Two counters
+    The harness, never the model, owns these limits.  Two counters
     are tracked:
 
       - ``turns``: incremented once per LLM response within a single
@@ -82,11 +82,11 @@ class IterationCaps:
     @property
     def breached(self) -> bool:
         return self.turns > self.max_turns_per_user_msg or \
-               self.tool_calls > self.max_tool_calls_per_session
+            self.tool_calls > self.max_tool_calls_per_session
 
 
 # ---------------------------------------------------------------------------
-# 4.2 Token budget enforcement
+# Token budget enforcement
 # ---------------------------------------------------------------------------
 
 # Above this fraction of the model's context window we trim older
@@ -102,7 +102,7 @@ def estimate_tokens(text: str) -> int:
     """Cheap token estimate: ~4 chars per token.
 
     Good enough for budget decisions; the real BPE count is only
-    needed for billing, which §4.4 handles via the API's own
+    needed for billing, which handles via the API's own
     ``usage`` field.
     """
     if not text:
@@ -112,7 +112,8 @@ def estimate_tokens(text: str) -> int:
 
 def _message_token_count(msg: Any) -> int:
     """Estimate tokens in a single chat message."""
-    content = msg.get("content") if isinstance(msg, dict) else getattr(msg, "content", None)
+    content = msg.get("content") if isinstance(
+        msg, dict) else getattr(msg, "content", None)
     if content is None:
         return 0
     if isinstance(content, str):
@@ -124,7 +125,7 @@ def _message_token_count(msg: Any) -> int:
 
 @dataclass
 class ContextBudget:
-    """Track cumulative tokens and trim the message history (§4.2).
+    """Track cumulative tokens and trim the message history.
 
     ``check_and_trim`` is called before each LLM request.  If the
     estimated token count exceeds ``max_tokens * trim_threshold`` it
@@ -187,10 +188,12 @@ class ContextBudget:
         tool_calls: list[str] = []
         total_chars = 0
         for m in dropped:
-            content = m.get("content") if isinstance(m, dict) else getattr(m, "content", "")
+            content = m.get("content") if isinstance(
+                m, dict) else getattr(m, "content", "")
             if content:
                 total_chars += len(str(content))
-            tcs = m.get("tool_calls") if isinstance(m, dict) else getattr(m, "tool_calls", None)
+            tcs = m.get("tool_calls") if isinstance(
+                m, dict) else getattr(m, "tool_calls", None)
             if tcs:
                 for tc in tcs:
                     name = getattr(getattr(tc, "function", None), "name", None)
@@ -201,12 +204,14 @@ class ContextBudget:
         blob = str([
             (m.get("role") if isinstance(m, dict) else getattr(m, "role", "")) for m in dropped
         ])
-        digest = hashlib.sha256(blob.encode("utf-8", "replace")).hexdigest()[:16]
+        digest = hashlib.sha256(blob.encode(
+            "utf-8", "replace")).hexdigest()[:16]
         lines = [
             "[context-trim summary]",
             f"Earlier conversation dropped to stay within the token budget.",
             f"Dropped messages: {len(dropped)} ({total_chars} chars).",
-            f"Tools called in dropped section: {', '.join(tool_calls) or 'none'}.",
+            f"Tools called in dropped section: {
+                ', '.join(tool_calls) or 'none'}.",
             f"Conversation hash (first 16 hex): {digest}.",
             "Re-read any files you need rather than relying on the dropped context.",
         ]
@@ -214,7 +219,7 @@ class ContextBudget:
 
 
 def cap_tool_result(result: str, limit: int = DEFAULT_MAX_TOOL_RESULT_CHARS) -> str:
-    """Cap a tool result before it is inserted into messages (§4.2).
+    """Cap a tool result before it is inserted into messages.
 
     Long results (e.g. reading a 50k-line file) are truncated to
     ``limit`` chars with a notice appended so the model knows there is
@@ -230,7 +235,7 @@ def cap_tool_result(result: str, limit: int = DEFAULT_MAX_TOOL_RESULT_CHARS) -> 
 
 
 # ---------------------------------------------------------------------------
-# 4.4 Cost circuit breakers
+# Cost circuit breakers
 # ---------------------------------------------------------------------------
 
 # Default per-session spend cap in USD.  Generous for local Ollama
@@ -246,7 +251,7 @@ DEFAULT_PRICE_PER_1K_OUT = 0.000600
 
 @dataclass
 class CostTracker:
-    """Accumulate API spend and abort when the cap is hit (§4.4).
+    """Accumulate API spend and abort when the cap is hit.
 
     After each ``chat.completions.create`` call, the caller invokes
     ``record_usage`` with the ``response.usage`` object (or None for
@@ -292,7 +297,8 @@ class CostTracker:
     def summary(self) -> str:
         return (
             f"calls={self.calls} tokens_in={self.total_tokens_in} "
-            f"tokens_out={self.total_tokens_out} cost=${self.total_cost_usd:.4f}"
+            f"tokens_out={self.total_tokens_out} cost=${
+                self.total_cost_usd:.4f}"
         )
 
 

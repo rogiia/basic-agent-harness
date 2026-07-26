@@ -1,15 +1,15 @@
-"""Session-level abort & kill switches (checklist §6.3).
+"""Session-level abort & kill switches.
 
 Three pieces:
 
-  1. ``AbortController`` — a thread-safe flag set by a signal handler
+  1. ``AbortController``: a thread-safe flag set by a signal handler
      (SIGINT / SIGTERM) or by any code path that detects a fatal
      condition (cost cap, iteration cap, user request).
 
-  2. ``FileRollback`` — snapshots original file bytes before each
+  2. ``FileRollback``: snapshots original file bytes before each
      write/edit so that an abort can offer to revert reversible state.
 
-  3. ``kill_in_flight`` — a helper that sends SIGINT to any python
+  3. ``kill_in_flight``: a helper that sends SIGINT to any python
      process running inside the sandbox container, stopping a hanging
      ``docker exec`` without tearing down the container itself.
 
@@ -81,7 +81,7 @@ class AbortController:
         """Register SIGINT / SIGTERM handlers that call ``trigger``.
 
         Only call this from the main thread (signal.signal requirement).
-        The previous handlers are not saved — we deliberately replace
+        The previous handlers are not saved, we deliberately replace
         them because the abort controller is the final arbiter.
         """
         def _handler(signum, frame):
@@ -94,7 +94,7 @@ class AbortController:
                 self._registered_signals.append(sig)
             except (ValueError, OSError):
                 # Not in main thread, or signal not supported on this
-                # platform — skip silently.
+                # platform, skip silently.
                 pass
 
     def remove_signal_handlers(self) -> None:
@@ -126,7 +126,7 @@ def kill_in_flight(container: str) -> None:
         )
     except Exception:
         # Best-effort: if the container is already gone or pkill isn't
-        # available, the exec subprocess's own timeout (§4.3) will
+        # available, the exec subprocess's own timeout will
         # eventually clean up.
         pass
 
@@ -136,14 +136,14 @@ def kill_in_flight(container: str) -> None:
 # ---------------------------------------------------------------------------
 
 class FileRollback:
-    """Snapshot original file bytes before each write/edit (§6.3).
+    """Snapshot original file bytes before each write/edit.
 
     On abort, ``offer_rollback`` walks the snapshot list and restores
     each file to its pre-edit state, prompting the user for
     confirmation.
 
     Only ``write_file`` and ``edit_file`` are reversible; ``run_bash``
-    side effects (e.g. ``git commit``) are not — the audit log is the
+    side effects (e.g. ``git commit``) are not, the audit log is the
     only record for those.
     """
 
@@ -154,7 +154,8 @@ class FileRollback:
 
     def _ensure_backup_dir(self) -> Path:
         if self._backup_dir is None:
-            self._backup_dir = Path(__file__).resolve().parent / ".rollback_backups"
+            self._backup_dir = Path(
+                __file__).resolve().parent / ".rollback_backups"
             self._backup_dir.mkdir(parents=True, exist_ok=True)
         return self._backup_dir
 
@@ -171,7 +172,7 @@ class FileRollback:
             shutil.copy2(p, backup)
             self._snapshots.append((str(p.resolve()), backup))
         except OSError:
-            # If we can't snapshot, we just can't roll back — don't
+            # If we can't snapshot, we just can't roll back, don't
             # block the tool call.
             pass
 

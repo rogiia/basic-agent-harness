@@ -102,7 +102,7 @@ def todo_update(id, content=None, status=None) -> str:
         if item["status"] == "in_progress" and retries > 0:
             if retries >= RETRY_LIMIT:
                 return (
-                    f"Updated to do item {id} to in_progress — "
+                    f"Updated to do item {id} to in_progress, "
                     f"but this is retry {retries} of {
                         RETRY_LIMIT} (retry limit reached). "
                     f"Do not retry again. Escalate to the user instead."

@@ -11,12 +11,12 @@ read-only to the tool.  Network egress can be disabled entirely with
 The container is started once per session and reused for every action
 tool call (via ``docker exec``) to avoid per-call startup latency.
 In-memory planning tools (todo, scratchpad, ask_question) are **not**
-run in the container — their state would not survive between separate
-``docker exec`` processes — so they stay in-process on the host.
+run in the container, their state would not survive between separate
+``docker exec`` processes, so they stay in-process on the host.
 
 This module requires a Docker-compatible container CLI on the host:
 Docker, or Podman (which is auto-detected when ``docker info`` does not
-work — note that a shell ``alias docker=podman`` is **not** enough,
+work, note that a shell ``alias docker=podman`` is **not** enough,
 because the agent invokes the binary directly via ``subprocess`` without
 a shell).  The runtime can also be forced with the ``$AGENT_DOCKER``
 environment variable.  On first use the ``agent-security-runner`` image
@@ -132,7 +132,7 @@ class DockerSandbox:
         self.image = image
         self.network = network
         self.exec_timeout = float(exec_timeout)
-        # the harness — not the model — controls the container env.
+        # the harness, not the model, controls the container env.
         # Only an allowlist of vars is inherited from the host; secret-
         # looking env vars are stripped before the container ever starts.
         self.container_env = container_env or {}
@@ -221,7 +221,7 @@ class DockerSandbox:
     def run_tool(self, name: str, args: dict) -> str:
         """Execute *name* with *args* inside the container, return its output.
 
-        §4.3: enforces a per-call timeout (``self.exec_timeout``).  A
+        enforces a per-call timeout (``self.exec_timeout``).  A
         timeout is reported back as a ``DockerSandboxError`` with a
         clear message so the LLM knows not to retry blindly.
         """
@@ -241,7 +241,7 @@ class DockerSandbox:
             raise DockerSandboxError(
                 f"Tool '{name}' timed out after {self.exec_timeout:.0f}s. "
                 "The command did not finish in the allowed time. Do not "
-                "retry the same call — adjust the approach or ask the user."
+                "retry the same call, adjust the approach or ask the user."
             )
         if proc.returncode != 0:
             err = (proc.stderr or proc.stdout or "").strip()

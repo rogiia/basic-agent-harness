@@ -78,7 +78,7 @@ def agent_loop(client):
             messages.append(message)
 
             if message.tool_calls:
-                # The LLM wants to use one or more tools — run them, then loop
+                # The LLM wants to use one or more tools, run them, then loop
                 handle_tool_calls(message.tool_calls, messages)
             else:
                 # No tool calls: we have the final answer

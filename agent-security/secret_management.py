@@ -1,22 +1,22 @@
-"""Secret & credential management (checklist §5).
+"""Secret & credential management.
 
 Three layers:
 
-  §5.1  Never put secrets in the system prompt.
+  Never put secrets in the system prompt.
          - ``scan_environment_for_secrets`` runs at startup and warns
            about env vars whose names look like credentials.
          - ``audit_system_prompt`` statically checks a prompt string for
            f-string interpolation of env vars or known secret names.
 
-  §5.2  Credential injection at the harness level.
+  Credential injection at the harness level.
          - ``build_container_env`` returns the minimal environment dict
-           passed to the sandbox container — only an allowlist of vars
+           passed to the sandbox container: only an allowlist of vars
            the agent genuinely needs, never raw host credentials.
          - ``CREDENTIAL_MOUNT_PATHS`` lists host files/dirs that must
            NOT be bind-mounted into the container (``~/.aws``,
            ``~/.ssh``, ``~/.netrc``, …).
 
-  §5.3  Rotate credentials per session.
+  Rotate credentials per session.
          - ``SessionCredentials`` generates a fresh per-session token
            via ``secrets.token_urlsafe``; the harness can pass it to
            the container and use it to authenticate any harness-side
@@ -34,12 +34,12 @@ from typing import Any
 
 
 # ---------------------------------------------------------------------------
-# 5.1 Never put secrets in the system prompt
+# Never put secrets in the system prompt
 # ---------------------------------------------------------------------------
 
 # Env-var name pattern that *looks* like a secret.  Matching is
 # case-insensitive.  False positives (e.g. ``PRINTER_SETTINGS``) are
-# fine — we only warn, we don't block.
+# fine, we only warn, we don't block.
 SECRET_ENV_PATTERN = re.compile(
     r"(.*(?:KEY|SECRET|TOKEN|PASSWORD|PASSWD|CREDENTIAL|APIKEY|API_KEY|AUTH).*)",
     re.IGNORECASE,
@@ -58,7 +58,7 @@ def scan_environment_for_secrets() -> list[tuple[str, str]]:
     """Return a list of ``(name, source)`` for env vars that look like secrets.
 
     ``source`` is ``"env"`` (a real environment variable).  This is a
-    startup warning only — it does not modify the environment.  The
+    startup warning only, it does not modify the environment.  The
     caller (the harness) decides whether to scrub them before starting
     the sandbox container (see ``build_container_env``).
     """
@@ -74,9 +74,9 @@ def audit_system_prompt(prompt: str) -> list[str]:
 
     Returns a list of warnings (empty if clean).  This catches:
 
-      - ``f"... {os.environ['API_KEY']} ..."``  — interpolating env
+      - ``f"... {os.environ['API_KEY']} ..."``: interpolating env
         vars directly into the prompt.
-      - ``f"... {os.getenv('SECRET')} ..."``    — same, via getenv.
+      - ``f"... {os.getenv('SECRET')} ..."``: same, via getenv.
       - Literal occurrences of known secret-looking env-var names.
     """
     warnings: list[str] = []
@@ -84,7 +84,7 @@ def audit_system_prompt(prompt: str) -> list[str]:
     if PROMPT_INTERPOLATION_PATTERN.search(prompt):
         warnings.append(
             "System prompt appears to interpolate os.environ / os.getenv. "
-            "Never put secrets in the system prompt — the model can leak "
+            "Never put secrets in the system prompt, the model can leak "
             "them in tool calls or responses."
         )
 
@@ -101,7 +101,7 @@ def audit_system_prompt(prompt: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# 5.2 Credential injection at the harness level
+# Credential injection at the harness level
 # ---------------------------------------------------------------------------
 
 # Host paths that must NEVER be bind-mounted into the sandbox container.
@@ -130,8 +130,8 @@ ALLOWED_CONTAINER_ENV = frozenset({
     "LANG",
     "LC_ALL",
     "TERM",
-    "AGENT_SESSION_ID",      # set per-session by the harness (§5.3)
-    "AGENT_SESSION_TOKEN",   # short-lived, per-session (§5.3)
+    "AGENT_SESSION_ID",      # set per-session by the harness
+    "AGENT_SESSION_TOKEN",   # short-lived, per-session
 })
 
 
@@ -162,7 +162,7 @@ def build_container_env(session_id: str, session_token: str) -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# 5.3 Rotate credentials per session
+# Rotate credentials per session
 # ---------------------------------------------------------------------------
 
 class SessionCredentials:

@@ -265,7 +265,7 @@ def get_tool_schemas():
                     "and cannot reasonably infer it from context. "
                     "Ask one focused question at a time. "
                     "Do not use this for progress updates or to confirm actions you can already "
-                    "take — only ask when you are genuinely blocked."
+                    "take, only ask when you are genuinely blocked."
                 ),
                 "parameters": {
                     "type": "object",

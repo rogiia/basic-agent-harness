@@ -1,7 +1,7 @@
 """Tool permission & parameter-scoping policy.
 
-Implements checklist §2.2 (confirmation for destructive actions) and
-§2.3 (scope tool parameters) in one place so the rules are easy to
+Implements confirmation for destructive actions and
+scope tool parameters in one place so the rules are easy to
 audit and extend.
 
 Three layers, evaluated in order by ``check_tool_policy`` before the
@@ -42,14 +42,14 @@ DESTRUCTIVE_TOOLS = frozenset({
 
 # Tools that ALWAYS require explicit human confirmation, even under
 # ``dangerouslySkipPermissions``.  These are the irreversible / exfil
-# class — we refuse them outright (a denylist), not just prompt for them.
+# class, we refuse them outright (a denylist), not just prompt for them.
 #
 # ``run_bash`` is not in this set as a whole; instead its *command* is
 # screened by the shell policy below.  ``webfetch`` is also policy-
 # screened (SSRF).  This set is reserved for tools where *any* call is
 # too dangerous to auto-run.
 ALWAYS_CONFIRM_TOOLS = frozenset({
-    # Currently empty — kept for future destructive tools (e.g. delete_file,
+    # Currently empty, kept for future destructive tools (e.g. delete_file,
     # send_email).  The shell policy handles the dangerous run_bash cases.
 })
 
@@ -160,7 +160,7 @@ SHELL_DENYLIST_BINARIES = frozenset({
     "docker",      # sandbox escape / host control
     "sudo", "su",  # privilege escalation
     "nc", "netcat", "ncat",  # reverse shells / exfil
-    "curl", "wget",  # exfil / SSRF — handled here AND in web policy
+    "curl", "wget",  # exfil / SSRF: handled here AND in web policy
     "chmod", "chown",  # permission tampering
     "mkfs", "dd",  # destructive disk ops
     "shutdown", "reboot", "halt", "poweroff",
@@ -200,7 +200,7 @@ def check_shell_policy(command: str) -> tuple[bool, str | None]:
     try:
         tokens = shlex.split(command)
     except ValueError:
-        # Unparseable (e.g. unbalanced quotes) — let the shell itself
+        # Unparseable (e.g. unbalanced quotes), let the shell itself
         # reject it, but flag for confirmation.
         return False, "Shell command could not be parsed (unbalanced quotes)."
 
@@ -266,7 +266,7 @@ def check_web_policy(url: str) -> tuple[bool, str | None]:
         if addr.is_loopback or addr.is_link_local or addr.is_multicast:
             return False, f"Blocked IP '{ip}' (loopback / link-local / multicast)."
         if addr.is_private:
-            return False, f"Blocked IP '{ip}' (RFC1918 private range — SSRF guard)."
+            return False, f"Blocked IP '{ip}' (RFC1918 private range: SSRF guard)."
     return True, None
 
 

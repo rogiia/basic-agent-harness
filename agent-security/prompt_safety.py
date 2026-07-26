@@ -110,7 +110,7 @@ def mark_external_content(
     their content in an ``<external_document>`` tag so the model treats
     them as data rather than instructions.
 
-    Error strings from the tools are returned unchanged — they are
+    Error strings from the tools are returned unchanged, they are
     harness-generated, not external content.
     """
     if tool_name == "webfetch":

@@ -1,4 +1,4 @@
-"""Lightweight JSON-Schema validator for tool inputs (checklist §3.1, §3.3).
+"""Lightweight JSON-Schema validator for tool inputs.
 
 We deliberately avoid a third-party dependency (``jsonschema`` /
 ``pydantic``) so the host-side validation needs no new install and no
@@ -12,7 +12,7 @@ JSON-Schema Draft 7 actually used by ``tools/registry.get_tool_schemas``:
   - ``minimum`` / ``maximum``
   - ``minLength`` / ``maxLength``
 
-§3.3 (limit output scope) is enforced by the same schemas: bounds on
+limit output scope is enforced by the same schemas: bounds on
 ``offset``, ``limit``, ``command`` length, ``content`` length, and a
 rejection of absolute-path glob patterns are baked into the schemas and
 therefore checked here.
@@ -43,7 +43,7 @@ def _check_type(value: Any, expected: str) -> str | None:
         if not isinstance(value, str):
             return f"expected string, got {type(value).__name__}"
     elif expected == "integer":
-        # bool is a subclass of int — reject it explicitly.
+        # bool is a subclass of int, reject it explicitly.
         if isinstance(value, bool) or not isinstance(value, int):
             return f"expected integer, got {type(value).__name__}"
     elif expected == "boolean":
@@ -58,7 +58,7 @@ def validate_args(args: dict[str, Any], schema: dict) -> tuple[bool, list[str]]:
     """Validate *args* against a tool's JSON-Schema function spec.
 
     ``schema`` is the inner ``{"type": "object", "properties": ...}``
-    dict — i.e. ``tool["function"]["parameters"]``.
+    dict, i.e. ``tool["function"]["parameters"]``.
 
     Returns ``(ok, errors)``.
     """
@@ -89,11 +89,11 @@ def validate_args(args: dict[str, Any], schema: dict) -> tuple[bool, list[str]]:
 
 
 # ---------------------------------------------------------------------------
-# Bounded schemas (§3.3 limit output scope)
+# Bounded schemas
 # ---------------------------------------------------------------------------
 
 def bounded_schemas(raw_schemas: list[dict]) -> list[dict]:
-    """Return a copy of *raw_schemas* with §3.3 bounds injected.
+    """Return a copy of *raw_schemas* with bounds injected.
 
     We mutate copies of the per-tool parameter schemas to add:
 
@@ -104,7 +104,7 @@ def bounded_schemas(raw_schemas: list[dict]) -> list[dict]:
       - ``run_bash.command``:   minLength 1, maxLength 4096
       - ``webfetch.url``:       maxLength 4096
       - ``glob_files.pattern``: reject absolute paths (pattern check
-        implemented in ``_validate_value`` via a custom constraint —
+        implemented in ``_validate_value`` via a custom constraint,
         here we add ``format: relative-path`` which our validator
         treats specially).
 
@@ -142,7 +142,8 @@ def bounded_schemas(raw_schemas: list[dict]) -> list[dict]:
             # would escape the working-dir scoping.
             props.setdefault("pattern", {})["format"] = "relative-path"
 
-        out.append({"type": "function", "function": {**fn, "parameters": params}})
+        out.append({"type": "function", "function": {
+                   **fn, "parameters": params}})
     return out
 
 
@@ -181,12 +182,15 @@ def _validate_value(value: Any, schema: dict, path: str) -> list[str]:
 
     if schema.get("type") == "string":
         if "minLength" in schema and len(value) < schema["minLength"]:
-            errs.append(f"{path}: length {len(value)} < minLength {schema['minLength']}")
+            errs.append(f"{path}: length {len(value)} < minLength {
+                        schema['minLength']}")
         if "maxLength" in schema and len(value) > schema["maxLength"]:
-            errs.append(f"{path}: length {len(value)} > maxLength {schema['maxLength']}")
-        # §3.3 custom format: relative-path (reject absolute glob patterns).
+            errs.append(f"{path}: length {len(value)} > maxLength {
+                        schema['maxLength']}")
+        # custom format: relative-path (reject absolute glob patterns).
         if schema.get("format") == "relative-path" and value.startswith("/"):
-            errs.append(f"{path}: absolute paths are not allowed here (must be relative)")
+            errs.append(
+                f"{path}: absolute paths are not allowed here (must be relative)")
 
     if schema.get("type") == "integer":
         if "minimum" in schema and value < schema["minimum"]:

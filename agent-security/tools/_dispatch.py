@@ -6,7 +6,7 @@ Invoked by the host as:
 
 The tool arguments are read from stdin as a JSON object; the result is
 printed to stdout.  Only the *action* tools (the ones that touch the
-filesystem, shell, or network) are dispatched here — the in-memory
+filesystem, shell, or network) are dispatched here: the in-memory
 planning tools stay on the host.
 """
 
