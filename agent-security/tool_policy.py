@@ -54,24 +54,23 @@ ALWAYS_CONFIRM_TOOLS = frozenset({
 })
 
 # Argument patterns that make an otherwise-allowed tool require
-# confirmation regardless of mode.  Each entry is (tool_name, regex).
+# confirmation regardless of mode.  Each entry is (tool_name, regex, reason).
 # The regex is matched (case-insensitive) against the JSON-serialized
 # args dict.
-ALWAYS_CONFIRM_ARG_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    # rm -rf with a broad or root target
-    ("run_bash", re.compile(r"\brm\s+-rf?\s+(/|~|\*|\$HOME|\.\.)", re.I)),
-    # force-push to git
-    ("run_bash", re.compile(r"\bgit\s+push\s+(-f|--force)", re.I)),
-    # privilege escalation
-    ("run_bash", re.compile(r"\bsudo\b|\bsu\b\s+", re.I)),
-    # any use of docker from inside the sandbox (escape risk)
-    ("run_bash", re.compile(r"\bdocker\b", re.I)),
-    # chmod world-writable
-    ("run_bash", re.compile(r"\bchmod\s+[-\d]*7\d\d?", re.I)),
-    # network exfiltration tools
-    ("run_bash", re.compile(r"\b(curl|wget|nc|netcat|ncat)\b", re.I)),
+#
+# NOTE: for ``run_bash``, anything already covered by
+# ``SHELL_DENYLIST_BINARIES`` or ``SHELL_DENYLIST_PATTERNS`` (rm -rf,
+# sudo/su, docker, chmod, curl/wget/nc/netcat/ncat) is a hard block in
+# layer 1 (``check_tool_policy``) and never reaches this layer, so it
+# is deliberately NOT duplicated here.  Only patterns that layer 1
+# does *not* already hard-block belong in this list.
+ALWAYS_CONFIRM_ARG_PATTERNS: list[tuple[str, re.Pattern[str], str]] = [
+    # force-push to git (git itself is not on the shell denylist)
+    ("run_bash", re.compile(r"\bgit\s+push\s+(-f|--force)", re.I),
+     "force-push to git (rewrites remote history)"),
     # overwriting a file with empty content = delete
-    ("write_file", re.compile(r'"content"\s*:\s*"\s*"')),
+    ("write_file", re.compile(r'"content"\s*:\s*"\s*"'),
+     "write_file with empty content on an existing file (delete-via-empty)"),
 ]
 
 
@@ -79,7 +78,7 @@ def is_destructive(tool_name: str, args: dict[str, Any]) -> bool:
     """Return True if the call is in the destructive class."""
     if tool_name in DESTRUCTIVE_TOOLS:
         return True
-    for name, pat in ALWAYS_CONFIRM_ARG_PATTERNS:
+    for name, pat, _reason in ALWAYS_CONFIRM_ARG_PATTERNS:
         if name == tool_name and pat.search(_args_blob(args)):
             return True
     # write_file emptying an existing file is treated as a delete in
@@ -87,14 +86,23 @@ def is_destructive(tool_name: str, args: dict[str, Any]) -> bool:
     return False
 
 
-def always_confirm_required(tool_name: str, args: dict[str, Any]) -> bool:
-    """Return True if the call must prompt the user regardless of mode."""
+def always_confirm_required(
+    tool_name: str, args: dict[str, Any]
+) -> tuple[bool, str | None]:
+    """Return (True, reason) if the call must prompt the user regardless
+    of mode, else (False, None).
+
+    Note: for ``run_bash`` this only needs to catch cases NOT already
+    hard-blocked by the shell policy (layer 1); anything on
+    ``SHELL_DENYLIST_BINARIES`` / ``SHELL_DENYLIST_PATTERNS`` never
+    reaches this function at all.
+    """
     if tool_name in ALWAYS_CONFIRM_TOOLS:
-        return True
-    for name, pat in ALWAYS_CONFIRM_ARG_PATTERNS:
+        return True, f"'{tool_name}' always requires confirmation."
+    for name, pat, reason in ALWAYS_CONFIRM_ARG_PATTERNS:
         if name == tool_name and pat.search(_args_blob(args)):
-            return True
-    return False
+            return True, reason
+    return False, None
 
 
 def _args_blob(args: dict[str, Any]) -> str:

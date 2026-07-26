@@ -148,14 +148,16 @@ def check_permission(
 
     # Layer 2: always-confirm & irreversible patterns.
     # These override even dangerouslySkipPermissions for the worst cases.
-    if tool_policy.always_confirm_required(tool_name, args):
+    confirm_required, confirm_reason = tool_policy.always_confirm_required(
+        tool_name, args)
+    if confirm_required:
         if mode == PermissionMode.DANGEROUSLY_SKIP_PERMISSIONS:
             # Irreversible calls are refused outright in skip mode; the
             # user explicitly accepted risk for normal destructive ops,
-            # but not for e.g. `rm -rf /` or `git push --force`.
+            # but not for e.g. `git push --force`.
             return False, (
                 f"Blocked even in dangerouslySkipPermissions: {
-                    reason or 'irreversible action'}. "
+                    confirm_reason or 'irreversible action'}. "
                 "Run this command manually outside the agent if it is truly intended."
             )
         # In default / acceptEdits, force an explicit prompt.
