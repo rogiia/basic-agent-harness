@@ -6,6 +6,7 @@ Companion code for the [ruxu.dev](https://www.ruxu.dev) blog post series on buil
 
 1. [Build a Basic AI Agent](https://www.ruxu.dev/articles/ai/build-a-basic-ai-agent/): A minimal conversational agent with a message loop, powered by a local model via Ollama.
 2. [Build an AI Agent with Tools](https://www.ruxu.dev/articles/ai/build-an-ai-agent-with-tools/): Extends the agent with a tool registry so the LLM can read/write files, search the filesystem, run shell commands, and fetch web pages.
+3. `agent-memory/`: Adds durable agent and user memory plus searchable, resumable sessions to the sandboxed agent.
 
 ## Structure
 
@@ -20,6 +21,9 @@ agent-with-tools/      # Part 2: agent with tool-calling support
     shell.py           # run shell commands
     web.py             # fetch web pages
     registry.py        # tool registry & schemas
+agent-memory/          # Persistent memory and session continuation
+  agent.py
+  memory.py             # File-backed notes and conversation sessions
 ```
 
 ## Requirements
@@ -49,3 +53,17 @@ uv run agent-with-tools/agent.py
 ```
 
 Type `\exit` to quit either agent.
+
+### agent-memory
+
+```bash
+uv run agent-memory/agent.py
+```
+
+Memory is stored outside the repository by default in `~/.agent-harness/memory`:
+
+- The agent reads and appends durable `personal` notes (lessons and environment facts) and `user` notes (preferences) through host-side memory tools.
+- Each conversation is saved as a transcript and should receive an LLM-written summary; a fallback summary is generated on exit if needed.
+- Type `\sessions` during a conversation, or run `uv run agent-memory/agent.py --list-sessions`, to list saved sessions.
+- Resume a conversation with `uv run agent-memory/agent.py --resume SESSION_ID`.
+- Change the storage location with `--memory-dir PATH`.
