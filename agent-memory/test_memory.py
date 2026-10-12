@@ -12,12 +12,20 @@ class MemoryStoreTests(unittest.TestCase):
         self.root = Path(tempfile.mkdtemp())
         self.store = MemoryStore(self.root)
 
-    def test_persists_personal_and_user_notes(self):
-        self.store.append_notes("personal", "Use uv for Python commands.")
+    def test_persists_project_and_user_notes(self):
+        self.store.append_notes("project", "Use uv for Python commands.")
         self.store.append_notes("user", "Prefers concise answers.")
 
-        self.assertIn("Use uv", self.store.read_notes("personal"))
+        self.assertIn("Use uv", self.store.read_notes("project"))
         self.assertIn("concise", self.store.read_notes("user"))
+
+    def test_migrates_existing_personal_notes_to_project(self):
+        (self.root / "personal.md").write_text("Use uv for Python commands.\n")
+
+        migrated = MemoryStore(self.root)
+
+        self.assertFalse((self.root / "personal.md").exists())
+        self.assertIn("Use uv", migrated.read_notes("project"))
 
     def test_lists_and_searches_saved_sessions(self):
         self.store.create_session("session-one", [

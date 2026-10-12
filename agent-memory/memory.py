@@ -18,6 +18,7 @@ class MemoryStore:
         self.sessions_dir = self.root / "sessions"
         self.root.mkdir(parents=True, exist_ok=True)
         self.sessions_dir.mkdir(exist_ok=True)
+        self._migrate_personal_notes()
 
     def read_notes(self, scope: str) -> str:
         path = self._notes_path(scope)
@@ -100,9 +101,16 @@ class MemoryStore:
         return matches
 
     def _notes_path(self, scope: str) -> Path:
-        if scope not in {"personal", "user"}:
-            raise ValueError("scope must be 'personal' or 'user'")
+        if scope not in {"project", "user"}:
+            raise ValueError("scope must be 'project' or 'user'")
         return self.root / f"{scope}.md"
+
+    def _migrate_personal_notes(self) -> None:
+        """Rename the old personal scope without discarding existing notes."""
+        old_path = self.root / "personal.md"
+        project_path = self.root / "project.md"
+        if old_path.exists() and not project_path.exists():
+            os.replace(old_path, project_path)
 
     def _session_path(self, session_id: str) -> Path:
         if not re.fullmatch(r"[A-Za-z0-9_-]+", session_id):

@@ -615,8 +615,8 @@ def agent_loop(
          "take, only ask when it is strictly necessary to proceed.\n\n"
 
          "- Long-term memory (read_memory / append_memory): at the start of a session, read "
-         "both personal and user memory. Personal memory is for durable lessons, environment "
-         "facts, and conventions; user memory is for stable preferences and expectations. "
+          "both project and user memory. Project memory is for durable lessons, environment "
+          "facts, and conventions; user memory is for stable preferences and expectations. "
          "Append only concise, useful facts that are likely to hold in future sessions. Never "
          "store secrets, credentials, or transient task details.\n"
          "- Past sessions (list_sessions / search_sessions / read_session): use these to find "
@@ -938,7 +938,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--memory-dir",
         default="~/.agent-harness/memory",
-        help="Directory for durable personal/user memory and saved sessions.",
+        help="Directory for durable project/user memory and saved sessions.",
     )
     parser.add_argument(
         "--list-sessions",

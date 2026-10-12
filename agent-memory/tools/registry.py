@@ -273,16 +273,16 @@ def get_tool_schemas():
             "type": "function",
             "function": {
                 "name": "read_memory",
-                "description": "Read durable notes. scope 'personal' contains the agent's lessons and environment facts; scope 'user' contains user preferences.",
-                "parameters": {"type": "object", "properties": {"scope": {"type": "string", "enum": ["personal", "user"]}}, "required": ["scope"]},
+                "description": "Read durable notes. scope 'project' contains project facts and conventions; scope 'user' contains user preferences.",
+                "parameters": {"type": "object", "properties": {"scope": {"type": "string", "enum": ["project", "user"]}}, "required": ["scope"]},
             },
         },
         {
             "type": "function",
             "function": {
                 "name": "append_memory",
-                "description": "Append a concise, durable fact to personal or user memory. Only save stable facts useful in future sessions; never save secrets.",
-                "parameters": {"type": "object", "properties": {"scope": {"type": "string", "enum": ["personal", "user"]}, "content": {"type": "string"}}, "required": ["scope", "content"]},
+                "description": "Append a concise, durable fact to project or user memory. Only save stable facts useful in future sessions; never save secrets.",
+                "parameters": {"type": "object", "properties": {"scope": {"type": "string", "enum": ["project", "user"]}, "content": {"type": "string"}}, "required": ["scope", "content"]},
             },
         },
         {
