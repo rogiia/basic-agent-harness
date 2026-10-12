@@ -7,6 +7,7 @@ Companion code for the [ruxu.dev](https://www.ruxu.dev) blog post series on buil
 1. [Build a Basic AI Agent](https://www.ruxu.dev/articles/ai/build-a-basic-ai-agent/): A minimal conversational agent with a message loop, powered by a local model via Ollama.
 2. [Build an AI Agent with Tools](https://www.ruxu.dev/articles/ai/build-an-ai-agent-with-tools/): Extends the agent with a tool registry so the LLM can read/write files, search the filesystem, run shell commands, and fetch web pages.
 3. `agent-memory/`: Adds durable agent and user memory plus searchable, resumable sessions to the sandboxed agent.
+4. `agent-sessions/`: Adds context compaction, session lifecycle controls, branching, exports, and crash recovery. See [usage](agent-sessions/README.md).
 
 ## Structure
 
@@ -24,6 +25,9 @@ agent-with-tools/      # Part 2: agent with tool-calling support
 agent-memory/          # Persistent memory and session continuation
   agent.py
   memory.py             # File-backed notes and conversation sessions
+agent-sessions/        # Session management built on agent-memory
+  agent.py
+  sessions.py           # Lifecycle, locking, recovery and lossless compaction
 ```
 
 ## Requirements
